@@ -6,23 +6,14 @@ const router = express.Router();
 const mongoose = require('mongoose');
 
 const Note = require('../models/note');
+const Folder = require('../models/folder');
 
-/* ========== GET/READ ALL ITEMS ========== */
-router.get('/notes', (req, res, next) => {
-  const { searchTerm, folderId } = req.query;
+/* ========== GET ALL FOLDERS ========== */
+router.get('/folders', (req, res, next) => {
 
-  let filter = {};
-
-  if (searchTerm) {
-    const re = new RegExp(searchTerm, 'i');
-    filter.title = { $regex: re };
-  }
-  if (folderId) {
-    filter.folderId = folderId;
-  }
-
-  Note.find(filter)
-    .sort('created')
+  Folder
+    .find()
+    .sort('name')
     .then(results => {
       res.json(results);
     })
@@ -31,8 +22,8 @@ router.get('/notes', (req, res, next) => {
     });
 });
 
-/* ========== GET/READ A SINGLE ITEM ========== */
-router.get('/notes/:id', (req, res, next) => {
+/* ========== GET/READ A SINGLE FOLDER ========== */
+router.get('/folders/:id', (req, res, next) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -41,7 +32,8 @@ router.get('/notes/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findById(id)
+  Folder
+    .findById(id)
     .then(result => {
       if (result) {
         res.json(result);
@@ -54,36 +46,41 @@ router.get('/notes/:id', (req, res, next) => {
     });
 });
 
-/* ========== POST/CREATE AN ITEM ========== */
-router.post('/notes', (req, res, next) => {
-  const { title, content, folderId} = req.body;
-
+/* ========== POST/CREATE A FOLDER ========== */
+router.post('/folders', (req, res, next) => {
+  const { name } = req.body;
+  const newFolder = {name};
   /***** Never trust users - validate input *****/
-  if (!title) {
-    const err = new Error('Missing `title` in request body');
+  if (!name) {
+    const err = new Error('Missing `name` in request body');
     err.status = 400;
     return next(err);
   }
 
-  const newItem = { title, content, folderId };
 
-  Note.create(newItem)
+  Folder
+    .create(newFolder)
     .then(result => {
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => {
+    if(err.code === 11000){
+        err = new Error('The folder name already exists');
+        err.status = 400;
+    }
       next(err);
     });
 });
 
-/* ========== PUT/UPDATE A SINGLE ITEM ========== */
-router.put('/notes/:id', (req, res, next) => {
+/* ========== PUT/UPDATE A SINGLE FOLDER ========== */
+router.put('/folders/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content, folderId } = req.body;
+  const { name } = req.body;
+  
 
   /***** Never trust users - validate input *****/
-  if (!title) {
-    const err = new Error('Missing `title` in request body');
+  if (!name) {
+    const err = new Error('Missing `name` in request body');
     err.status = 400;
     return next(err);
   }
@@ -94,10 +91,12 @@ router.put('/notes/:id', (req, res, next) => {
     return next(err);
   }
 
-  const updateItem = { title, content, folderId };
+  const updateFolder = { name };
   const options = { new: true };
+  
 
-  Note.findByIdAndUpdate(id, updateItem, options)
+  Folder
+    .findByIdAndUpdate(id, updateFolder, options)
     .then(result => {
       if (result) {
         res.json(result);
@@ -106,15 +105,20 @@ router.put('/notes/:id', (req, res, next) => {
       }
     })
     .catch(err => {
+    if(err.code === 11000) {
+        err = new Error('The folder name already exists');
+        err.status = 400;
+    }
       next(err);
     });
 });
 
-/* ========== DELETE/REMOVE A SINGLE ITEM ========== */
-router.delete('/notes/:id', (req, res, next) => {
+/* ========== DELETE/REMOVE A SINGLE FOLDER ========== */
+router.delete('/folders/:id', (req, res, next) => {
   const { id } = req.params;
 
-  Note.findByIdAndRemove(id)
+  Folder
+    .findByIdAndRemove(id)
     .then(() => {
       res.status(204).end();
     })

@@ -7,7 +7,9 @@ const mongoose = require('mongoose');
 const { TEST_MONGODB_URI } = require('../config');
 
 const Note = require('../models/note');
+const Folder = require('../models/folder');
 const seedNotes = require('../db/seed/notes');
+const seedFolders = require('../db/seed/folders');
 
 const expect = chai.expect;
 
@@ -19,7 +21,9 @@ describe('Noteful API - Notes', function () {
   });
 
   beforeEach(function () {
-    return Note.insertMany(seedNotes);
+    const noteInsertPromise = Note.insertMany(seedNotes);
+    const folderInsertPromise = Folder.insertMany(seedFolders);
+    return Promise.all([noteInsertPromise, folderInsertPromise]);
   });
 
   afterEach(function () {
@@ -35,6 +39,19 @@ describe('Noteful API - Notes', function () {
     it('should return the correct number of Notes and correct fields', function () {
       const dbPromise = Note.find();
       const apiPromise = chai.request(app).get('/api/notes');
+     
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.length(data.length);
+          
+        });
+    });
+    it('should return a list with the correct right fields', function () {
+      const dbPromise = Note.find();
+      const apiPromise = chai.request(app).get('/api/notes');
 
       return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
@@ -44,7 +61,7 @@ describe('Noteful API - Notes', function () {
           expect(res.body).to.have.length(data.length);
           res.body.forEach(function (item) {
             expect(item).to.be.a('object');
-            expect(item).to.have.keys('id', 'title', 'content', 'created');
+            expect(item).to.have.keys('id', 'title', 'content', 'created', 'folderId');
           });
         });
     });
@@ -66,6 +83,22 @@ describe('Noteful API - Notes', function () {
         });
     });
 
+    it('should return correct search results for a folderId query', function () {
+      let data;
+      return Folder.findOne()
+        .then((_data) => {
+          data = _data;
+          const dbPromise = Note.find({ folderId: data.id });
+          const apiPromise = chai.request(app).get(`/api/notes?folderId=${data.id}`);
+          return Promise.all([dbPromise, apiPromise]);
+        })
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.length(data.length);
+        });
+    });
     it('should return an empty array for an incorrect query', function () {
       const searchTerm = 'NotValid';
       const re = new RegExp(searchTerm, 'i');
@@ -97,11 +130,12 @@ describe('Noteful API - Notes', function () {
           expect(res).to.be.json;
 
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'created');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'created', 'folderId');
 
           expect(res.body.id).to.equal(data.id);
           expect(res.body.title).to.equal(data.title);
           expect(res.body.content).to.equal(data.content);
+       
         });
     });
 
@@ -193,7 +227,7 @@ describe('Noteful API - Notes', function () {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'created');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'created', 'folderId');
 
           expect(res.body.id).to.equal(data.id);
           expect(res.body.title).to.equal(updateItem.title);
