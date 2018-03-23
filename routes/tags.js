@@ -6,7 +6,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 
 const Tag = require('../models/tag');
-
+const Note = require('../models/note');
 /* ==== GET/READ ALL TAGS ==== */
 
 router.get('/tags', (req, res, next) => {
@@ -115,11 +115,21 @@ router.put('/tags/:id', (req, res, next) => {
   /* ========== DELETE/REMOVE A SINGLE FOLDER ========== */
   router.delete('/tags/:id', (req, res, next) => {
     const { id } = req.params;
-  
-    Tag
-      .findByIdAndRemove(id)
-      .then(() => {
-        res.status(204).end();
+    const tagRemovePromise =  Tag.findByIdAndRemove(id);
+    // removing tag with a certain id
+    const noteUpdatePromise = Note.updateMany(
+      {'tags':id,},
+      {'$pull': {'tags': id}}
+    );
+    //updating all notes with a certain tag id
+
+    Promise.all([tagRemovePromise, noteUpdatePromise])
+      .then(([tagResults]) => {
+        if(tagResults) {
+          res.status(204).end();
+        } else {
+          next();
+        }
       })
       .catch(err => {
         next(err);
