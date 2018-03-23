@@ -121,7 +121,7 @@ router.put('/notes/:id', (req, res, next) => {
     });
   }
 
-  const updateItem = { title, content, folderId, tags };
+  const updateItem = { title, content, tags };
   const options = { new: true };
 
   Note.findByIdAndUpdate(id, updateItem, options)
