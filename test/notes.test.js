@@ -25,8 +25,8 @@ describe('Noteful API - Notes', function () {
   beforeEach(function () {
     const noteInsertPromise = Note.insertMany(seedNotes);
     const folderInsertPromise = Folder.insertMany(seedFolders);
-  
-    return Promise.all([noteInsertPromise, folderInsertPromise]);
+    return Promise.all([noteInsertPromise, folderInsertPromise])
+      .then(() => Note.ensureIndexes());
   });
 
   afterEach(function () {
